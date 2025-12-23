@@ -125,36 +125,25 @@ trending_bulk(limit=10, enrich=True, output="trends.json")
 
 Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
-**Option 1: Using uvx (recommended)**
+**From source (current)**
+```json
+{
+  "mcpServers": {
+    "trendkit": {
+      "command": "uv",
+      "args": ["--directory", "/ABSOLUTE/PATH/TO/trendkit", "run", "trendkit-mcp"]
+    }
+  }
+}
+```
+
+**After PyPI release**
 ```json
 {
   "mcpServers": {
     "trendkit": {
       "command": "uvx",
       "args": ["--from", "trendkit[mcp]", "trendkit-mcp"]
-    }
-  }
-}
-```
-
-**Option 2: Using pip installed package**
-```json
-{
-  "mcpServers": {
-    "trendkit": {
-      "command": "trendkit-mcp"
-    }
-  }
-}
-```
-
-**Option 3: Local development**
-```json
-{
-  "mcpServers": {
-    "trendkit": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/trendkit", "run", "trendkit-mcp"]
     }
   }
 }
