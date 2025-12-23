@@ -1,5 +1,7 @@
 """Basic tests for trendkit."""
 
+from unittest.mock import patch, MagicMock
+import pandas as pd
 import pytest
 from trendkit import trending, related, compare, interest, supported_geos
 
@@ -28,25 +30,41 @@ class TestTrending:
 
 
 class TestRelated:
-    """Tests for related function."""
+    """Tests for related function (mocked to avoid rate limits)."""
 
-    def test_related_returns_list(self):
+    @patch("trendkit.core._get_pytrends")
+    def test_related_returns_list(self, mock_get_pytrends):
         """related() should return list of strings."""
+        mock_backend = MagicMock()
+        mock_get_pytrends.return_value = mock_backend
+        mock_backend.related_queries.return_value = ["query1", "query2", "query3"]
+
         result = related("아이폰", limit=5)
         assert isinstance(result, list)
         assert all(isinstance(kw, str) for kw in result)
+        mock_backend.related_queries.assert_called_once()
 
-    def test_related_respects_limit(self):
+    @patch("trendkit.core._get_pytrends")
+    def test_related_respects_limit(self, mock_get_pytrends):
         """related() should respect limit parameter."""
+        mock_backend = MagicMock()
+        mock_get_pytrends.return_value = mock_backend
+        mock_backend.related_queries.return_value = ["q1", "q2", "q3"]
+
         result = related("아이폰", limit=3)
         assert len(result) <= 3
 
 
 class TestCompare:
-    """Tests for compare function."""
+    """Tests for compare function (mocked to avoid rate limits)."""
 
-    def test_compare_returns_dict(self):
+    @patch("trendkit.core._get_pytrends")
+    def test_compare_returns_dict(self, mock_get_pytrends):
         """compare() should return dict with float values."""
+        mock_backend = MagicMock()
+        mock_get_pytrends.return_value = mock_backend
+        mock_backend.compare.return_value = {"삼성": 45.0, "애플": 55.0}
+
         result = compare(["삼성", "애플"])
         assert isinstance(result, dict)
         assert "삼성" in result
@@ -55,10 +73,18 @@ class TestCompare:
 
 
 class TestInterest:
-    """Tests for interest function."""
+    """Tests for interest function (mocked to avoid rate limits)."""
 
-    def test_interest_returns_dict_with_dates_and_values(self):
+    @patch("trendkit.core._get_pytrends")
+    def test_interest_returns_dict_with_dates_and_values(self, mock_get_pytrends):
         """interest() should return dict with dates and values."""
+        mock_backend = MagicMock()
+        mock_get_pytrends.return_value = mock_backend
+        mock_backend.interest_over_time.return_value = {
+            "dates": ["2024-12-01", "2024-12-02"],
+            "values": {"BTS": [42, 45]}
+        }
+
         result = interest(["BTS"], days=7)
         assert isinstance(result, dict)
         assert "dates" in result

@@ -5,12 +5,29 @@ Multi-platform trend aggregator optimized for LLM tool calls.
 Supports: Google Trends
 """
 
-from typing import Literal, Optional
-from functools import lru_cache
+from __future__ import annotations
+
+import logging
+import time
+from typing import Optional, overload
 
 from .types import Format
 from .backends.rss import RSSBackend
 from .backends.pytrends_backend import PyTrendsBackend, Platform
+from .cache import get_cache, LRUCache
+from .exceptions import (
+    TrendkitError,
+    TrendkitAPIError,
+    TrendkitRateLimitError,
+    TrendkitTimeoutError,
+    TrendkitServiceError,
+    TrendkitDriverError,
+    TrendkitValidationError,
+    RetryConfig,
+)
+
+# Logger
+logger = logging.getLogger(__name__)
 
 # Lazy-loaded backends
 _pytrends_backend: Optional[PyTrendsBackend] = None
@@ -24,6 +41,72 @@ def _get_pytrends() -> PyTrendsBackend:
     return _pytrends_backend
 
 
+def _validate_geo(geo: str) -> None:
+    """Validate geo code."""
+    valid_geos = supported_geos()
+    if geo.upper() not in valid_geos:
+        raise TrendkitValidationError(
+            message=f"Invalid geo code: '{geo}'",
+            parameter="geo",
+            valid_values=valid_geos[:10],  # Show first 10
+            suggestion=f"Use one of: {', '.join(valid_geos[:10])}..."
+        )
+
+
+def _validate_limit(limit: int, max_limit: int = 100) -> None:
+    """Validate limit parameter."""
+    if limit < 1:
+        raise TrendkitValidationError(
+            message=f"limit must be positive, got {limit}",
+            parameter="limit"
+        )
+    if limit > max_limit:
+        raise TrendkitValidationError(
+            message=f"limit exceeds maximum ({max_limit}), got {limit}",
+            parameter="limit",
+            suggestion=f"Use limit <= {max_limit}"
+        )
+
+
+def _with_retry(
+    func,
+    retry_config: Optional[RetryConfig] = None,
+    retryable_exceptions: tuple = (TrendkitRateLimitError,)
+):
+    """Execute function with exponential backoff retry.
+
+    Args:
+        func: Function to execute
+        retry_config: Retry configuration
+        retryable_exceptions: Exceptions that trigger retry
+
+    Returns:
+        Function result
+
+    Raises:
+        Last exception if all retries fail
+    """
+    config = retry_config or RetryConfig()
+    last_exception = None
+
+    for attempt in range(config.max_retries + 1):
+        try:
+            return func()
+        except retryable_exceptions as e:
+            last_exception = e
+            if attempt < config.max_retries:
+                delay = config.get_delay(attempt)
+                logger.warning(
+                    f"Attempt {attempt + 1}/{config.max_retries + 1} failed: {e}. "
+                    f"Retrying in {delay:.1f}s..."
+                )
+                time.sleep(delay)
+            else:
+                logger.error(f"All {config.max_retries + 1} attempts failed")
+
+    raise last_exception
+
+
 # ============================================
 # Realtime Trending
 # ============================================
@@ -32,6 +115,8 @@ def trending(
     geo: str = "KR",
     limit: int = 10,
     format: Format = "minimal",
+    cache: bool = False,
+    ttl: int = 300,
 ) -> list[str] | list[dict]:
     """
     Get realtime trending keywords (fast, via RSS).
@@ -43,15 +128,39 @@ def trending(
             - "minimal": ["keyword1", "keyword2", ...] (~5 tokens/item)
             - "standard": [{"keyword": "...", "traffic": "..."}] (~15 tokens/item)
             - "full": [{"keyword": "...", "news": [...]}] (~100 tokens/item)
+        cache: Enable caching (default: False)
+        ttl: Cache time-to-live in seconds (default: 300)
 
     Returns:
         List of trending keywords or dicts.
 
+    Raises:
+        TrendkitValidationError: If geo or limit is invalid
+        TrendkitAPIError: If API call fails
+
     Example:
         >>> trending(limit=5)
         ['환율', '신한카드', '국민신문고', '국가장학금', '흑백요리사2']
+
+        >>> trending(limit=5, cache=True, ttl=60)  # Cache for 60 seconds
     """
-    return RSSBackend.fetch_trending(geo=geo, limit=limit, format=format)
+    _validate_limit(limit, max_limit=20)
+
+    if cache:
+        cache_instance = get_cache()
+        cache_key = cache_instance._make_key("trending", (geo, limit, format), {})
+        cached_result = cache_instance.get(cache_key)
+        if cached_result is not None:
+            logger.debug(f"Cache hit for trending({geo}, {limit}, {format})")
+            return cached_result
+
+    result = RSSBackend.fetch_trending(geo=geo, limit=limit, format=format)
+
+    if cache:
+        cache_instance.set(cache_key, result, ttl)
+        logger.debug(f"Cached trending({geo}, {limit}, {format}) for {ttl}s")
+
+    return result
 
 
 def trending_bulk(
@@ -60,6 +169,7 @@ def trending_bulk(
     limit: int = 100,
     enrich: bool = False,
     output: Optional[str] = None,
+    timeout: float = 60.0,
 ) -> dict | list[dict]:
     """
     Get bulk trending data with Selenium (slower, more data).
@@ -70,6 +180,7 @@ def trending_bulk(
         limit: Number of results (max ~100)
         enrich: If True, fetch additional data (news, images, related queries)
         output: Optional file path to save results (.json only if enrich=True)
+        timeout: Maximum time in seconds for Selenium operations (default: 60)
 
     Returns:
         If enrich=False: [{"keyword": "...", "rank": 1, "traffic": "..."}]
@@ -78,17 +189,54 @@ def trending_bulk(
             "trends": [{"keyword": "...", "news": [...], "related": [...]}]
         }
 
+    Raises:
+        TrendkitDriverError: If Selenium/ChromeDriver fails
+        TrendkitTimeoutError: If operation times out
+        TrendkitValidationError: If parameters are invalid
+
     Note:
         Requires selenium extra: pip install trendkit[selenium]
 
     Example:
         >>> trending_bulk(limit=10, enrich=True, output="trends.json")
     """
-    from .backends.selenium_backend import SeleniumBackend
+    _validate_limit(limit, max_limit=200)
 
-    backend = SeleniumBackend(headless=True)
+    valid_hours = [4, 24, 48, 168]
+    if hours not in valid_hours:
+        raise TrendkitValidationError(
+            message=f"Invalid hours value: {hours}",
+            parameter="hours",
+            valid_values=valid_hours
+        )
+
+    try:
+        from .backends.selenium_backend import SeleniumBackend
+    except ImportError as e:
+        raise TrendkitDriverError(
+            message="Selenium is not installed",
+            suggestion="Install with: pip install trendkit[selenium]"
+        ) from e
+
+    try:
+        backend = SeleniumBackend(headless=True)
+    except Exception as e:
+        raise TrendkitDriverError(
+            message=f"Failed to initialize Selenium driver: {e}"
+        ) from e
+
     try:
         data = backend.fetch_trending(geo=geo, hours=hours, limit=limit)
+    except Exception as e:
+        if "timeout" in str(e).lower():
+            raise TrendkitTimeoutError(
+                message=f"Selenium operation timed out after {timeout}s",
+                timeout=timeout
+            ) from e
+        raise TrendkitAPIError(
+            message=f"Failed to fetch trends: {e}",
+            suggestion="Check your internet connection and try again"
+        ) from e
     finally:
         backend.close()
 

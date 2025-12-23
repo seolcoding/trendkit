@@ -17,16 +17,16 @@ Priority: `P0` (Critical) → `P1` (High) → `P2` (Medium) → `P3` (Low)
 
 ### Branding (P0)
 
-- [ ] README 태그라인 추가: "Token-Optimized Trends for AI"
-- [ ] README "Why trendkit?" 섹션 추가
-- [ ] README 배지 추가 (PyPI, Python, License, MCP)
+- [x] README 태그라인 추가: "Token-Optimized Trends for AI"
+- [x] README "Why trendkit?" 섹션 추가
+- [x] README 배지 추가 (PyPI, Python, License, MCP)
 - [ ] GitHub repository description 업데이트
 - [ ] GitHub topics 추가 (google-trends, mcp, llm, claude, ai)
 
 ### Documentation (P0)
 
-- [ ] 경쟁 비교표 작성 (vs pytrends, SerpAPI, Tavily)
-- [ ] 토큰 절감 효과 수치화 (Before/After 예시)
+- [x] 경쟁 비교표 작성 (vs pytrends, SerpAPI, Tavily)
+- [x] 토큰 절감 효과 수치화 (Before/After 예시)
 
 ---
 
@@ -40,11 +40,11 @@ Priority: `P0` (Critical) → `P1` (High) → `P2` (Medium) → `P3` (Low)
 
 ### Documentation (P1)
 
-- [ ] Use Case 문서
-  - [ ] AI 뉴스봇 구축 예시
-  - [ ] 콘텐츠 추천 시스템 예시
-  - [ ] 마케팅 트렌드 분석 예시
-- [ ] CONTRIBUTING.md 작성
+- [x] Use Case 문서
+  - [x] AI 뉴스봇 구축 예시
+  - [x] 콘텐츠 추천 시스템 예시
+  - [x] 마케팅 트렌드 분석 예시
+- [x] CONTRIBUTING.md 작성
 - [ ] API docstrings 완성
 
 ### Marketing (P1)
@@ -60,27 +60,27 @@ Priority: `P0` (Critical) → `P1` (High) → `P2` (Medium) → `P3` (Low)
 
 ### Features (P1)
 
-- [ ] 캐시 레이어 구현
-  - [ ] 인메모리 캐시 (LRU)
-  - [ ] TTL 설정 지원
-  - [ ] 캐시 무효화 API
+- [x] 캐시 레이어 구현
+  - [x] 인메모리 캐시 (LRU)
+  - [x] TTL 설정 지원
+  - [x] 캐시 무효화 API
   - **완료 기준:**
-    - [ ] `trending(cache=True, ttl=300)` 동작 확인
-    - [ ] 캐시 히트 시 응답 시간 < 10ms
-    - [ ] `trendkit.cache.clear()` API 동작
-    - [ ] 단위 테스트 추가 (`tests/test_cache.py`)
-  - **검증:** `uv run pytest tests/test_cache.py -v`
+    - [x] `trending(cache=True, ttl=300)` 동작 확인
+    - [x] 캐시 히트 시 응답 시간 < 10ms
+    - [x] `trendkit.cache.clear()` API 동작
+    - [x] 단위 테스트 추가 (`tests/test_cache.py`)
+  - **검증:** `uv run pytest tests/test_cache.py -v` ✅ 24 passed
 
-- [ ] 에러 핸들링 강화
-  - [ ] Rate limit 자동 재시도
-  - [ ] Timeout 설정 지원
-  - [ ] 상세 에러 메시지
+- [x] 에러 핸들링 강화
+  - [x] Rate limit 자동 재시도
+  - [x] Timeout 설정 지원
+  - [x] 상세 에러 메시지
   - **완료 기준:**
-    - [ ] `TrendkitError` 예외 계층 구현
-    - [ ] exponential backoff 재시도 (1s, 2s, 4s)
-    - [ ] 에러 메시지에 해결 방법 포함
-    - [ ] 단위 테스트 추가 (`tests/test_errors.py`)
-  - **검증:** `uv run pytest tests/test_errors.py -v`
+    - [x] `TrendkitError` 예외 계층 구현
+    - [x] exponential backoff 재시도 (1s, 2s, 4s)
+    - [x] 에러 메시지에 해결 방법 포함
+    - [x] 단위 테스트 추가 (`tests/test_exceptions.py`)
+  - **검증:** `uv run pytest tests/test_exceptions.py -v` ✅ 22 passed
 
 ### Quality (P1)
 
@@ -127,6 +127,25 @@ Priority: `P0` (Critical) → `P1` (High) → `P2` (Medium) → `P3` (Low)
 ---
 
 ## Done
+
+### v0.1.1 Features
+
+- [x] 캐시 레이어 (`src/trendkit/cache.py`)
+  - LRU 캐시 with TTL
+  - `trending(cache=True, ttl=300)` API
+  - `trendkit.cache.clear()`, `trendkit.cache.stats()`
+- [x] 예외 계층 (`src/trendkit/exceptions.py`)
+  - `TrendkitError` 기본 예외
+  - `TrendkitRateLimitError`, `TrendkitTimeoutError`
+  - `TrendkitDriverError`, `TrendkitValidationError`
+  - exponential backoff `RetryConfig`
+- [x] 입력 유효성 검증
+  - `_validate_geo()`, `_validate_limit()`
+  - 친절한 에러 메시지 with suggestion
+- [x] 테스트 추가 (59개 테스트 통과)
+  - `tests/test_cache.py` (24 tests)
+  - `tests/test_exceptions.py` (22 tests)
+  - `tests/test_validation.py` (5 tests)
 
 ### v0.1.0 Release
 

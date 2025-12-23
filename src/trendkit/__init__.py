@@ -18,6 +18,20 @@ Quick Start:
     # YouTube keyword interest (via Google Trends)
     >>> interest(["BTS"], platform="youtube")
     {"dates": [...], "values": {"BTS": [60, 69, ...]}}
+
+Caching:
+    >>> trending(limit=5, cache=True, ttl=60)  # Cache for 60 seconds
+
+    >>> from trendkit import cache
+    >>> cache.clear()  # Clear all cached data
+    >>> cache.stats()  # Get cache statistics
+
+Error Handling:
+    >>> from trendkit import TrendkitError, TrendkitRateLimitError
+    >>> try:
+    ...     trending(limit=5)
+    ... except TrendkitRateLimitError as e:
+    ...     print(f"Rate limited. Retry after {e.retry_after}s")
 """
 
 from .core import (
@@ -35,6 +49,21 @@ from .core import (
 from .types import Format
 from .backends.pytrends_backend import Platform
 
+# Cache module
+from . import cache
+
+# Exceptions
+from .exceptions import (
+    TrendkitError,
+    TrendkitAPIError,
+    TrendkitRateLimitError,
+    TrendkitTimeoutError,
+    TrendkitServiceError,
+    TrendkitDriverError,
+    TrendkitValidationError,
+    RetryConfig,
+)
+
 __version__ = "0.1.0"
 
 __all__ = [
@@ -49,4 +78,15 @@ __all__ = [
     # Types
     "Format",
     "Platform",
+    # Cache
+    "cache",
+    # Exceptions
+    "TrendkitError",
+    "TrendkitAPIError",
+    "TrendkitRateLimitError",
+    "TrendkitTimeoutError",
+    "TrendkitServiceError",
+    "TrendkitDriverError",
+    "TrendkitValidationError",
+    "RetryConfig",
 ]
