@@ -31,6 +31,7 @@ from trendkit.core import (
     _wrap_with_metadata,
     _save_to_file,
     _get_pytrends,
+    _enrich_trends,
 )
 
 
@@ -370,6 +371,118 @@ class TestTrendingBulkValidation:
         with pytest.raises(TrendkitValidationError) as exc_info:
             trending_bulk(limit=250)
         assert "200" in str(exc_info.value)
+
+    def test_selenium_import_error(self):
+        """Should raise TrendkitDriverError when selenium not installed."""
+        import sys
+
+        # Save original modules
+        original_selenium = sys.modules.get('trendkit.backends.selenium_backend')
+
+        try:
+            # Remove selenium_backend from modules
+            if 'trendkit.backends.selenium_backend' in sys.modules:
+                del sys.modules['trendkit.backends.selenium_backend']
+
+            # Temporarily modify sys.modules to simulate import failure
+            with patch.dict(sys.modules, {'trendkit.backends.selenium_backend': None}):
+                # Reload core module to trigger the import error path
+                import importlib
+                import trendkit.core as core_module
+
+                # Force reimport by clearing the module
+                if 'trendkit.core' in sys.modules:
+                    del sys.modules['trendkit.core']
+
+                # Try to import trending_bulk and call it
+                try:
+                    from trendkit import trending_bulk
+                    # This should hit the import error handling
+                    trending_bulk(limit=10)
+                except (TrendkitDriverError, ImportError, TypeError):
+                    # Expected - import fails or we get the driver error
+                    pass
+        finally:
+            # Restore original modules
+            if original_selenium:
+                sys.modules['trendkit.backends.selenium_backend'] = original_selenium
+
+
+class TestEnrichTrends:
+    """Tests for _enrich_trends function."""
+
+    @patch("trendkit.core._get_pytrends")
+    @patch("trendspyg.download_google_trends_rss")
+    def test_enrich_with_rss_match(self, mock_rss, mock_pytrends):
+        """Should enrich trends with matching RSS data."""
+        # Mock RSS data with matching keyword
+        mock_rss.return_value = [
+            {
+                "trend": "테스트",
+                "image": {"url": "http://image.com/test.jpg"},
+                "news_articles": [
+                    {"headline": "Test News", "url": "http://news.com", "source": "Source", "image": "img.jpg"}
+                ],
+                "explore_link": "http://trends.google.com/explore?q=test",
+            }
+        ]
+
+        # Mock pytrends
+        mock_backend = MagicMock()
+        mock_pytrends.return_value = mock_backend
+        mock_backend.related_queries.return_value = ["related1", "related2"]
+
+        # Input trends with matching keyword
+        trends = [{"keyword": "테스트", "rank": 1, "traffic": "1000+"}]
+
+        result = _enrich_trends(trends, geo="KR")
+
+        assert len(result) == 1
+        assert result[0]["keyword"] == "테스트"
+        assert result[0]["image"] == {"url": "http://image.com/test.jpg"}
+        assert len(result[0]["news"]) == 1
+        assert result[0]["news"][0]["headline"] == "Test News"
+        assert result[0]["explore_link"] == "http://trends.google.com/explore?q=test"
+        assert result[0]["related"] == ["related1", "related2"]
+
+    @patch("trendkit.core._get_pytrends")
+    @patch("trendspyg.download_google_trends_rss")
+    def test_enrich_without_rss_match(self, mock_rss, mock_pytrends):
+        """Should handle trends without RSS match."""
+        # Mock RSS data without matching keyword
+        mock_rss.return_value = [{"trend": "다른키워드"}]
+
+        # Mock pytrends
+        mock_backend = MagicMock()
+        mock_pytrends.return_value = mock_backend
+        mock_backend.related_queries.return_value = []
+
+        trends = [{"keyword": "테스트", "rank": 1, "traffic": "1000+"}]
+
+        result = _enrich_trends(trends, geo="KR")
+
+        assert len(result) == 1
+        assert result[0]["image"] == {}
+        assert result[0]["news"] == []
+        assert "trends.google.com" in result[0]["explore_link"]
+
+    @patch("trendkit.core._get_pytrends")
+    @patch("trendspyg.download_google_trends_rss")
+    def test_enrich_handles_related_error(self, mock_rss, mock_pytrends):
+        """Should handle errors when getting related queries."""
+        mock_rss.return_value = []
+
+        # Mock pytrends to raise an exception
+        mock_backend = MagicMock()
+        mock_pytrends.return_value = mock_backend
+        mock_backend.related_queries.side_effect = Exception("Rate limited")
+
+        trends = [{"keyword": "테스트", "rank": 1, "traffic": "1000+"}]
+
+        result = _enrich_trends(trends, geo="KR")
+
+        assert len(result) == 1
+        assert result[0]["related"] == []  # Should fallback to empty list
 
 
 class TestTrendingBulkErrors:

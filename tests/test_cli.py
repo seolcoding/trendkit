@@ -243,3 +243,40 @@ class TestCLIHelpMessages:
         assert "--hours" in result.stdout
         assert "--enrich" in result.stdout
         assert "--output" in result.stdout
+
+
+class TestCLIMain:
+    """Tests for CLI entry point."""
+
+    def test_main_function_exists(self):
+        """main() function should exist."""
+        from trendkit.cli import main
+        assert callable(main)
+
+    @patch("trendkit.cli.app")
+    def test_main_calls_app(self, mock_app):
+        """main() should call the typer app."""
+        from trendkit.cli import main
+        main()
+        mock_app.assert_called_once()
+
+
+class TestCLIErrorHandling:
+    """Tests for CLI error scenarios."""
+
+    def test_trend_invalid_geo_shows_error(self):
+        """trend with invalid geo should show user-friendly error."""
+        result = runner.invoke(app, ["trend", "--geo", "INVALID", "--limit", "3"])
+        # Should fail but not crash
+        assert result.exit_code != 0 or "error" in result.stdout.lower() or "invalid" in result.stdout.lower()
+
+    def test_trend_invalid_limit_shows_error(self):
+        """trend with invalid limit should show helpful error."""
+        result = runner.invoke(app, ["trend", "--limit", "100"])  # Max is 20
+        # Should indicate the limit issue
+        assert result.exit_code != 0 or "20" in result.stdout
+
+    def test_trend_negative_limit_shows_error(self):
+        """trend with negative limit should show error."""
+        result = runner.invoke(app, ["trend", "--limit", "-5"])
+        assert result.exit_code != 0

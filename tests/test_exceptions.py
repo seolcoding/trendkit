@@ -71,6 +71,27 @@ class TestTrendkitTimeoutError:
         assert error.partial_results == []
 
 
+class TestTrendkitServiceError:
+    """Tests for TrendkitServiceError."""
+
+    def test_default_suggestion(self):
+        """ServiceError should have default suggestion when none provided."""
+        error = TrendkitServiceError()
+        assert error.suggestion is not None
+        assert "try again" in error.suggestion.lower()
+        assert error.status_code == 503
+
+    def test_custom_message(self):
+        """ServiceError should accept custom message."""
+        error = TrendkitServiceError(message="Service down")
+        assert "Service down" in str(error)
+
+    def test_custom_suggestion(self):
+        """ServiceError should use custom suggestion when provided."""
+        error = TrendkitServiceError(suggestion="Contact support")
+        assert error.suggestion == "Contact support"
+
+
 class TestTrendkitDriverError:
     """Tests for TrendkitDriverError."""
 

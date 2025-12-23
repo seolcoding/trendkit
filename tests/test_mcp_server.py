@@ -1,5 +1,6 @@
 """Tests for MCP server tools."""
 
+import sys
 from unittest.mock import patch, MagicMock
 import pytest
 
@@ -11,6 +12,8 @@ from trendkit.mcp_server import (
     trends_related,
     trends_compare,
     trends_interest,
+    main,
+    mcp,
 )
 
 
@@ -158,3 +161,86 @@ class TestMCPToolDocstrings:
         assert trends_interest.__doc__ is not None
         assert "dates" in trends_interest.__doc__
         assert "values" in trends_interest.__doc__
+
+
+class TestMCPMain:
+    """Tests for MCP server entry point."""
+
+    def test_main_calls_mcp_run(self):
+        """main() should call mcp.run with stdio transport."""
+        with patch.object(mcp, 'run') as mock_run:
+            main()
+            mock_run.assert_called_once_with(transport="stdio")
+
+    def test_mcp_server_exists(self):
+        """MCP server should be properly initialized."""
+        assert mcp is not None
+        assert mcp.name == "trendkit"
+
+
+class TestMCPErrorHandling:
+    """Tests for MCP tool error scenarios."""
+
+    @patch("trendkit.mcp_server.trending")
+    def test_trending_rate_limit_propagates(self, mock_trending):
+        """MCP tool should propagate rate limit errors."""
+        from trendkit import TrendkitRateLimitError
+        mock_trending.side_effect = TrendkitRateLimitError(retry_after=60)
+
+        with pytest.raises(TrendkitRateLimitError) as exc_info:
+            trends_trending()
+        assert exc_info.value.retry_after == 60
+
+    @patch("trendkit.mcp_server.compare")
+    def test_compare_validation_error_propagates(self, mock_compare):
+        """MCP tool should propagate validation errors."""
+        from trendkit import TrendkitValidationError
+        mock_compare.side_effect = TrendkitValidationError("Invalid keyword count")
+
+        with pytest.raises(TrendkitValidationError):
+            trends_compare(keywords=["single"])
+
+    @patch("trendkit.mcp_server.interest")
+    def test_interest_timeout_propagates(self, mock_interest):
+        """MCP tool should propagate timeout errors."""
+        from trendkit import TrendkitTimeoutError
+        mock_interest.side_effect = TrendkitTimeoutError(timeout=30.0)
+
+        with pytest.raises(TrendkitTimeoutError):
+            trends_interest(keywords=["test"])
+
+
+class TestMCPImportError:
+    """Tests for MCP import error handling."""
+
+    def test_import_error_when_mcp_missing(self):
+        """Should raise ImportError with helpful message when MCP not installed."""
+        # Save original modules
+        original_mcp = sys.modules.get('mcp')
+        original_fastmcp = sys.modules.get('mcp.server.fastmcp')
+
+        try:
+            # Remove mcp from modules to simulate it not being installed
+            if 'mcp' in sys.modules:
+                del sys.modules['mcp']
+            if 'mcp.server.fastmcp' in sys.modules:
+                del sys.modules['mcp.server.fastmcp']
+            if 'trendkit.mcp_server' in sys.modules:
+                del sys.modules['trendkit.mcp_server']
+
+            # Mock the import to raise ImportError
+            with patch.dict(sys.modules, {'mcp': None, 'mcp.server.fastmcp': None}):
+                with pytest.raises(ImportError) as exc_info:
+                    # Force reimport
+                    import importlib
+                    import trendkit.mcp_server
+                    importlib.reload(trendkit.mcp_server)
+        except (ImportError, TypeError):
+            # Expected - either import fails or reload fails
+            pass
+        finally:
+            # Restore original modules
+            if original_mcp:
+                sys.modules['mcp'] = original_mcp
+            if original_fastmcp:
+                sys.modules['mcp.server.fastmcp'] = original_fastmcp
