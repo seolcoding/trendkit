@@ -170,9 +170,15 @@ def trending_bulk(
     enrich: bool = False,
     output: Optional[str] = None,
     timeout: float = 60.0,
+    headless: bool = True,
 ) -> dict | list[dict]:
     """
-    Get bulk trending data with Selenium (slower, more data).
+    Get bulk trending data with Playwright stealth browser (slower, more data).
+
+    Uses playwright-stealth for anti-detection:
+    - Bypasses bot detection on Google Trends
+    - Faster than Selenium with async I/O
+    - Spoofs browser fingerprints
 
     Args:
         geo: Country code
@@ -180,7 +186,8 @@ def trending_bulk(
         limit: Number of results (max ~100)
         enrich: If True, fetch additional data (news, images, related queries)
         output: Optional file path to save results (.json only if enrich=True)
-        timeout: Maximum time in seconds for Selenium operations (default: 60)
+        timeout: Maximum time in seconds for browser operations (default: 60)
+        headless: Run browser in headless mode (default: True)
 
     Returns:
         If enrich=False: [{"keyword": "...", "rank": 1, "traffic": "..."}]
@@ -190,12 +197,13 @@ def trending_bulk(
         }
 
     Raises:
-        TrendkitDriverError: If Selenium/ChromeDriver fails
+        TrendkitDriverError: If Playwright/browser fails
         TrendkitTimeoutError: If operation times out
         TrendkitValidationError: If parameters are invalid
 
     Note:
-        Requires selenium extra: pip install trendkit[selenium]
+        Requires playwright extra: pip install trendkit[playwright]
+        Then run: playwright install chromium
 
     Example:
         >>> trending_bulk(limit=10, enrich=True, output="trends.json")
@@ -211,18 +219,19 @@ def trending_bulk(
         )
 
     try:
-        from .backends.selenium_backend import SeleniumBackend
+        from .backends.playwright_backend import PlaywrightBackend
     except ImportError as e:
         raise TrendkitDriverError(
-            message="Selenium is not installed",
-            suggestion="Install with: pip install trendkit[selenium]"
+            message="Playwright is not installed",
+            suggestion="Install with: pip install trendkit[playwright] && playwright install chromium"
         ) from e
 
     try:
-        backend = SeleniumBackend(headless=True)
+        backend = PlaywrightBackend(headless=headless)
     except Exception as e:
         raise TrendkitDriverError(
-            message=f"Failed to initialize Selenium driver: {e}"
+            message=f"Failed to initialize Playwright browser: {e}",
+            suggestion="Run: playwright install chromium"
         ) from e
 
     try:
@@ -230,7 +239,7 @@ def trending_bulk(
     except Exception as e:
         if "timeout" in str(e).lower():
             raise TrendkitTimeoutError(
-                message=f"Selenium operation timed out after {timeout}s",
+                message=f"Browser operation timed out after {timeout}s",
                 timeout=timeout
             ) from e
         raise TrendkitAPIError(

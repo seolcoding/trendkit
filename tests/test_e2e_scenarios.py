@@ -225,11 +225,11 @@ class TestTokenOptimizationScenario:
 class TestDataExportScenario:
     """Scenario: Exporting trend data for analysis."""
 
-    @patch("trendkit.backends.selenium_backend.SeleniumBackend")
-    def test_csv_export_workflow(self, mock_selenium):
+    @patch("trendkit.backends.playwright_backend.PlaywrightBackend")
+    def test_csv_export_workflow(self, mock_playwright):
         """Export trends to CSV file."""
-        # Mock the selenium backend
-        mock_instance = mock_selenium.return_value
+        # Mock the playwright backend
+        mock_instance = mock_playwright.return_value
         mock_instance.fetch_trending.return_value = [
             {"keyword": "test1", "rank": 1, "traffic": "1000+"},
             {"keyword": "test2", "rank": 2, "traffic": "500+"},

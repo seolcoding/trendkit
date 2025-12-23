@@ -372,20 +372,20 @@ class TestTrendingBulkValidation:
             trending_bulk(limit=250)
         assert "200" in str(exc_info.value)
 
-    def test_selenium_import_error(self):
-        """Should raise TrendkitDriverError when selenium not installed."""
+    def test_playwright_import_error(self):
+        """Should raise TrendkitDriverError when playwright not installed."""
         import sys
 
         # Save original modules
-        original_selenium = sys.modules.get('trendkit.backends.selenium_backend')
+        original_playwright = sys.modules.get('trendkit.backends.playwright_backend')
 
         try:
-            # Remove selenium_backend from modules
-            if 'trendkit.backends.selenium_backend' in sys.modules:
-                del sys.modules['trendkit.backends.selenium_backend']
+            # Remove playwright_backend from modules
+            if 'trendkit.backends.playwright_backend' in sys.modules:
+                del sys.modules['trendkit.backends.playwright_backend']
 
             # Temporarily modify sys.modules to simulate import failure
-            with patch.dict(sys.modules, {'trendkit.backends.selenium_backend': None}):
+            with patch.dict(sys.modules, {'trendkit.backends.playwright_backend': None}):
                 # Reload core module to trigger the import error path
                 import importlib
                 import trendkit.core as core_module
@@ -404,8 +404,8 @@ class TestTrendingBulkValidation:
                     pass
         finally:
             # Restore original modules
-            if original_selenium:
-                sys.modules['trendkit.backends.selenium_backend'] = original_selenium
+            if original_playwright:
+                sys.modules['trendkit.backends.playwright_backend'] = original_playwright
 
 
 class TestEnrichTrends:
@@ -488,20 +488,20 @@ class TestEnrichTrends:
 class TestTrendingBulkErrors:
     """Tests for trending_bulk error handling."""
 
-    @patch("trendkit.backends.selenium_backend.SeleniumBackend")
-    def test_driver_init_error(self, mock_selenium):
+    @patch("trendkit.backends.playwright_backend.PlaywrightBackend")
+    def test_driver_init_error(self, mock_playwright):
         """Driver initialization error should raise TrendkitDriverError."""
-        mock_selenium.side_effect = Exception("Chrome not found")
+        mock_playwright.side_effect = Exception("Browser not found")
 
         from trendkit import trending_bulk
         with pytest.raises(TrendkitDriverError) as exc_info:
             trending_bulk(limit=10)
-        assert "Selenium driver" in str(exc_info.value)
+        assert "Playwright" in str(exc_info.value)
 
-    @patch("trendkit.backends.selenium_backend.SeleniumBackend")
-    def test_timeout_error(self, mock_selenium):
+    @patch("trendkit.backends.playwright_backend.PlaywrightBackend")
+    def test_timeout_error(self, mock_playwright):
         """Timeout during fetch should raise TrendkitTimeoutError."""
-        mock_instance = mock_selenium.return_value
+        mock_instance = mock_playwright.return_value
         mock_instance.fetch_trending.side_effect = Exception("timeout occurred")
 
         from trendkit import trending_bulk
@@ -509,10 +509,10 @@ class TestTrendingBulkErrors:
             trending_bulk(limit=10)
         assert "timed out" in str(exc_info.value)
 
-    @patch("trendkit.backends.selenium_backend.SeleniumBackend")
-    def test_api_error(self, mock_selenium):
+    @patch("trendkit.backends.playwright_backend.PlaywrightBackend")
+    def test_api_error(self, mock_playwright):
         """General API error should raise TrendkitAPIError."""
-        mock_instance = mock_selenium.return_value
+        mock_instance = mock_playwright.return_value
         mock_instance.fetch_trending.side_effect = Exception("Connection refused")
 
         from trendkit import trending_bulk
@@ -520,10 +520,10 @@ class TestTrendingBulkErrors:
             trending_bulk(limit=10)
         assert "fetch trends" in str(exc_info.value).lower()
 
-    @patch("trendkit.backends.selenium_backend.SeleniumBackend")
-    def test_successful_bulk_with_enrich(self, mock_selenium):
+    @patch("trendkit.backends.playwright_backend.PlaywrightBackend")
+    def test_successful_bulk_with_enrich(self, mock_playwright):
         """Should return enriched data when enrich=True."""
-        mock_instance = mock_selenium.return_value
+        mock_instance = mock_playwright.return_value
         mock_instance.fetch_trending.return_value = [
             {"keyword": "test1", "rank": 1, "traffic": "1000+"},
             {"keyword": "test2", "rank": 2, "traffic": "500+"},
@@ -537,10 +537,10 @@ class TestTrendingBulkErrors:
         assert result["metadata"]["geo"] == "KR"
         mock_instance.close.assert_called_once()
 
-    @patch("trendkit.backends.selenium_backend.SeleniumBackend")
-    def test_bulk_output_to_file(self, mock_selenium):
+    @patch("trendkit.backends.playwright_backend.PlaywrightBackend")
+    def test_bulk_output_to_file(self, mock_playwright):
         """Should save results to file."""
-        mock_instance = mock_selenium.return_value
+        mock_instance = mock_playwright.return_value
         mock_instance.fetch_trending.return_value = [
             {"keyword": "test1", "rank": 1, "traffic": "1000+"},
         ]

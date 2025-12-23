@@ -35,8 +35,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-selenium = [
-    "selenium>=4.0.0",
+playwright = [
+    "playwright>=1.40.0",
+    "playwright-stealth>=1.0.0",
 ]
 mcp = [
     "mcp>=1.0.0",
@@ -46,7 +47,7 @@ cli = [
     "rich>=13.0.0",
 ]
 all = [
-    "trendkit[selenium,mcp,cli]",
+    "trendkit[playwright,mcp,cli]",
 ]
 
 [project.urls]
