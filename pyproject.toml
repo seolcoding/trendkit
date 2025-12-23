@@ -50,10 +50,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/trendkit/trendkit"
-Repository = "https://github.com/trendkit/trendkit"
-Documentation = "https://github.com/trendkit/trendkit#readme"
-Issues = "https://github.com/trendkit/trendkit/issues"
+Homepage = "https://github.com/seolcoding/trendkit"
+Repository = "https://github.com/seolcoding/trendkit"
+Documentation = "https://github.com/seolcoding/trendkit#readme"
+Issues = "https://github.com/seolcoding/trendkit/issues"
 
 [project.scripts]
 trendkit = "trendkit.cli:main"
