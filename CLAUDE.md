@@ -1,8 +1,11 @@
-# Google Trends API - Project Context
+# trendkit - Project Context
 
 ## Overview
 
-LLM-optimized Google Trends wrapper with token-efficient output formats.
+Multi-platform trend aggregator optimized for LLM tool calls.
+- Google Trends (v0.1) ✅
+- Naver Trends (planned)
+- YouTube Trends (planned)
 
 ## Tech Stack
 
@@ -14,11 +17,11 @@ LLM-optimized Google Trends wrapper with token-efficient output formats.
 ## Project Structure
 
 ```
-src/google_trends_api/
+src/trendkit/
 ├── core.py           # Public API (trending, related, compare, interest)
 ├── types.py          # Type definitions (Format, TypedDicts)
-├── cli.py            # CLI entry point (gtrends command)
-├── mcp_server.py     # MCP server (google-trends-mcp command)
+├── cli.py            # CLI entry point (trendkit command)
+├── mcp_server.py     # MCP server (trendkit-mcp command)
 └── backends/
     ├── rss.py        # trendspyg RSS backend (fast)
     ├── pytrends_backend.py  # Analysis features
@@ -37,7 +40,7 @@ Three output formats to minimize LLM token usage:
 - `standard`: Dict with keyword + traffic (~15 tokens/item)
 - `full`: Complete data with news (~100 tokens/item)
 
-### Backend Strategy
+### Backend Strategy (Google)
 
 | Backend | Library | Purpose |
 |---------|---------|---------|
@@ -45,22 +48,21 @@ Three output formats to minimize LLM token usage:
 | Selenium | selenium | Bulk collection (100+ items) |
 | pytrends | pytrends | Analysis (interest, related, compare) |
 
-Note: pytrends `trending_searches()` returns 404 - use trendspyg RSS instead.
-
 ## Commands
 
 ```bash
 # Development
+cd /Users/sdh/Dev/02_production/trendkit
 source .venv/bin/activate
-uv run python -c "from google_trends_api import trending; print(trending(limit=5))"
+uv run python -c "from trendkit import trending; print(trending(limit=5))"
 
 # CLI (after pip install)
-gtrends trend --limit 5
-gtrends rel 아이폰 --limit 5
-gtrends cmp 삼성 애플
+trendkit trend --limit 5
+trendkit rel 아이폰 --limit 5
+trendkit cmp 삼성 애플
 
 # MCP Server (after pip install)
-google-trends-mcp
+trendkit-mcp
 
 # Tests
 uv run pytest tests/ -v
@@ -69,7 +71,7 @@ uv run pytest tests/ -v
 ## API Quick Reference
 
 ```python
-from google_trends_api import trending, related, compare, interest
+from trendkit import trending, related, compare, interest
 
 trending(geo="KR", limit=10, format="minimal")  # List[str]
 related("keyword", geo="KR", limit=10)          # List[str]
@@ -84,7 +86,8 @@ interest(["kw1"], geo="KR", days=7)             # Dict with dates/values
 - `trends_compare`: Compare keyword interest
 - `trends_interest`: Interest over time
 
-## Content Creation
+## Roadmap
 
-This package does NOT handle content creation. It provides data only.
-Content generation is the responsibility of downstream consumers.
+- [x] v0.1 - Google Trends
+- [ ] v0.2 - Naver Trends (DataLab API)
+- [ ] v0.3 - YouTube Trends (Data API v3)

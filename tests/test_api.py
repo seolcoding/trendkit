@@ -1,7 +1,7 @@
-"""Basic tests for google-trends-api."""
+"""Basic tests for trendkit."""
 
 import pytest
-from google_trends_api import trending, related, compare, interest, supported_geos
+from trendkit import trending, related, compare, interest, supported_geos
 
 
 class TestTrending:

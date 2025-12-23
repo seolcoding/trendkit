@@ -1,8 +1,13 @@
 """
-Google Trends API - Lightweight wrapper optimized for LLM tool calls.
+trendkit - Multi-platform trend aggregator optimized for LLM tool calls.
+
+Supported platforms:
+- Google Trends (v0.1)
+- Naver Trends (planned)
+- YouTube Trends (planned)
 
 Quick Start:
-    >>> from google_trends_api import trending, related, compare
+    >>> from trendkit import trending, related, compare
     >>> trending(limit=5)
     ['환율', '신한카드', '국민신문고', ...]
 

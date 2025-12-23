@@ -1,21 +1,24 @@
-# PRD: Google Trends API
+# PRD: trendkit
 
 ## Problem Statement
 
-LLM 도구 호출에서 Google Trends 데이터를 활용할 때 토큰 소비가 과다함.
+LLM 도구 호출에서 트렌드 데이터를 활용할 때 토큰 소비가 과다함.
 기존 라이브러리들은 분석용으로 설계되어 LLM function calling에 비효율적.
+다중 플랫폼(Google, Naver, YouTube) 통합 솔루션 부재.
 
 ## Goals
 
 1. **토큰 최적화**: LLM tool call에 최적화된 최소 토큰 출력
-2. **다중 인터페이스**: Python API, MCP Server, CLI 통합 지원
-3. **백엔드 조합**: 용도별 최적 데이터 소스 선택
+2. **다중 플랫폼**: Google, Naver, YouTube 트렌드 통합
+3. **직접 수집**: 외부 API 의존 없이 자체 스크래핑
+4. **다중 인터페이스**: Python API, MCP Server, CLI 통합 지원
 
 ## Non-Goals
 
 - 컨텐츠 생성 (downstream 책임)
 - 데이터 시각화
 - 데이터 저장/캐싱
+- 35개+ 플랫폼 지원 (TrendRadar와 차별화)
 
 ## Solution
 
@@ -27,13 +30,13 @@ LLM 도구 호출에서 Google Trends 데이터를 활용할 때 토큰 소비�
 | standard | ~15 | `[{"keyword": "kw", "traffic": "5K+"}]` |
 | full | ~100 | 뉴스 포함 전체 데이터 |
 
-### 백엔드 조합
+### 플랫폼별 구현
 
-| Use Case | Backend | Speed | Volume |
-|----------|---------|-------|--------|
-| 실시간 트렌딩 | trendspyg RSS | Fast | 10-20 |
-| 벌크 수집 | Selenium | Slow | 100+ |
-| 분석 기능 | pytrends | Medium | N/A |
+| Platform | Method | Status |
+|----------|--------|--------|
+| Google Trends | trendspyg RSS + pytrends | ✅ v0.1 |
+| Naver Trends | DataLab API | 🔜 v0.2 |
+| YouTube Trends | Data API v3 | 🔜 v0.3 |
 
 ### 핵심 API
 
@@ -46,30 +49,26 @@ interest(keywords, geo, days) # 시계열 관심도
 
 ## Technical Decisions
 
-### pytrends 제한사항
+### TrendRadar와 차별화
 
-- `trending_searches()` 404 오류 → trendspyg RSS 대체
-- `interest_over_time()`, `related_queries()` 정상 동작
+| 항목 | TrendRadar | trendkit |
+|------|------------|----------|
+| 데이터 소스 | newsnow API 의존 | 직접 수집 |
+| 플랫폼 | 35개 (중국 중심) | 3개 (한국/글로벌) |
+| 목적 | 뉴스/여론 모니터링 | LLM tool call |
+| 출력 | 풍부한 컨텍스트 | 토큰 최적화 |
 
-### 의존성 분리
+## Roadmap
 
-```toml
-[project.optional-dependencies]
-selenium = ["selenium>=4.0.0"]
-mcp = ["mcp>=1.0.0"]
-cli = ["typer>=0.9.0", "rich>=13.0.0"]
-```
-
-## Success Metrics
-
-- minimal format 사용 시 토큰 80% 감소
-- API 응답시간: RSS < 1초, pytrends < 3초
-- MCP 도구 4종 완성
+- [x] v0.1 - Google Trends
+- [ ] v0.2 - Naver Trends
+- [ ] v0.3 - YouTube Trends
 
 ## Status
 
 v0.1.0 구현 완료:
 - [x] Core API (trending, related, compare, interest)
-- [x] 3개 백엔드 (RSS, pytrends, Selenium)
+- [x] Google 백엔드 (RSS, pytrends, Selenium)
 - [x] MCP Server
 - [x] CLI
+- [x] 테스트 8개 통과

@@ -1,36 +1,41 @@
-# Google Trends API
+# trendkit
 
-Lightweight Google Trends wrapper optimized for LLM tool calls.
+Multi-platform trend aggregator optimized for LLM tool calls.
+
+## Supported Platforms
+
+| Platform | Status | Method |
+|----------|--------|--------|
+| Google Trends | ✅ v0.1 | RSS + pytrends |
+| Naver Trends | 🔜 Planned | DataLab API |
+| YouTube Trends | 🔜 Planned | Data API v3 |
 
 ## Features
 
 - **Token-optimized**: Minimal output format for LLM function calling
-- **Multiple backends**: RSS (fast), pytrends (analysis), Selenium (bulk)
+- **Direct scraping**: No external API dependency
 - **Multiple interfaces**: Python API, MCP server, CLI
 
 ## Installation
 
 ```bash
 # Basic
-pip install google-trends-api
+pip install trendkit
 
 # With CLI
-pip install google-trends-api[cli]
+pip install trendkit[cli]
 
 # With MCP server
-pip install google-trends-api[mcp]
-
-# With Selenium for bulk collection
-pip install google-trends-api[selenium]
+pip install trendkit[mcp]
 
 # All features
-pip install google-trends-api[all]
+pip install trendkit[all]
 ```
 
 ## Quick Start
 
 ```python
-from google_trends_api import trending, related, compare, interest
+from trendkit import trending, related, compare, interest
 
 # Realtime trending (minimal tokens)
 keywords = trending(limit=5)
@@ -53,17 +58,17 @@ data = interest(["BTS"], days=7)
 
 ```bash
 # Trending keywords
-gtrends trend --limit 5
-gtrends trend --geo US --format standard
+trendkit trend --limit 5
+trendkit trend --geo US --format standard
 
 # Related queries
-gtrends rel 아이폰 --limit 5
+trendkit rel 아이폰 --limit 5
 
 # Compare keywords
-gtrends cmp 삼성 애플 --days 90
+trendkit cmp 삼성 애플 --days 90
 
 # Interest history
-gtrends hist BTS --days 7
+trendkit hist BTS --days 7
 ```
 
 ## MCP Server
@@ -73,8 +78,8 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 ```json
 {
   "mcpServers": {
-    "google-trends": {
-      "command": "google-trends-mcp"
+    "trendkit": {
+      "command": "trendkit-mcp"
     }
   }
 }
@@ -93,62 +98,24 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 
 ### `trending(geo="KR", limit=10, format="minimal")`
 
-Get realtime trending keywords via RSS (fast).
-
-**Parameters:**
-- `geo`: Country code (KR, US, JP, etc.)
-- `limit`: Number of results (max 20)
-- `format`: Output detail level
+Get realtime trending keywords.
 
 **Returns:**
 - `minimal`: `["keyword1", "keyword2", ...]`
 - `standard`: `[{"keyword": "...", "traffic": "..."}]`
 - `full`: `[{"keyword": "...", "traffic": "...", "news": [...]}]`
 
-### `trending_bulk(geo="KR", hours=168, limit=100)`
-
-Get bulk trending data via Selenium (slower, more data).
-
-**Parameters:**
-- `geo`: Country code
-- `hours`: Time period (4, 24, 48, 168)
-- `limit`: Number of results (up to ~100)
-
-**Requires:** `pip install google-trends-api[selenium]`
-
 ### `related(keyword, geo="KR", limit=10)`
 
 Get related search queries for a keyword.
-
-**Returns:** `["related1", "related2", ...]`
 
 ### `compare(keywords, geo="KR", days=90)`
 
 Compare keywords by average search interest.
 
-**Parameters:**
-- `keywords`: List of keywords (max 5)
-- `days`: Time period (1, 7, 30, 90, 365)
-
-**Returns:** `{"keyword1": 45.6, "keyword2": 14.4}`
-
 ### `interest(keywords, geo="KR", days=7)`
 
 Get interest over time for keywords.
-
-**Returns:**
-```python
-{
-    "dates": ["2024-12-16", "2024-12-17", ...],
-    "values": {"BTS": [42, 45, ...]}
-}
-```
-
-### `supported_geos()`
-
-Get list of commonly supported country codes.
-
-**Returns:** `["KR", "US", "JP", "GB", ...]`
 
 ## Token Optimization
 
@@ -161,30 +128,24 @@ Get list of commonly supported country codes.
 ## Architecture
 
 ```
-google-trends-api/
-├── src/google_trends_api/
+trendkit/
+├── src/trendkit/
 │   ├── core.py              # Main API functions
 │   ├── types.py             # Type definitions
-│   ├── cli.py               # CLI (gtrends command)
+│   ├── cli.py               # CLI (trendkit command)
 │   ├── mcp_server.py        # MCP server
 │   └── backends/
-│       ├── rss.py           # trendspyg RSS (fast)
-│       ├── pytrends_backend.py  # Analysis features
-│       └── selenium_backend.py  # Bulk collection
-└── tests/                   # Test files
+│       ├── google/          # Google Trends backends
+│       ├── naver/           # Naver Trends (planned)
+│       └── youtube/         # YouTube Trends (planned)
+└── tests/
 ```
 
-### Backend Selection
+## Roadmap
 
-| Backend | Speed | Data Volume | Use Case |
-|---------|-------|-------------|----------|
-| RSS (trendspyg) | Fast | 10-20 items | Realtime trending |
-| Selenium | Slow | 100+ items | Bulk collection |
-| pytrends | Medium | N/A | Analysis (interest, related, compare) |
-
-## Supported Countries
-
-KR, US, JP, GB, DE, FR, CA, AU, IN, BR, MX, ES, IT, NL, SE, CH, TW, HK, SG, TH, VN, ID, MY, PH
+- [x] v0.1 - Google Trends
+- [ ] v0.2 - Naver Trends
+- [ ] v0.3 - YouTube Trends
 
 ## License
 
