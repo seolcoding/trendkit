@@ -1,9 +1,33 @@
 [project]
 name = "trendkit"
 version = "0.1.0"
-description = "Multi-platform trend aggregator optimized for LLM tool calls (Google, Naver, YouTube)"
+description = "Google Trends aggregator optimized for LLM tool calls"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
+authors = [
+    { name = "trendkit contributors" }
+]
+keywords = [
+    "google-trends",
+    "trends",
+    "mcp",
+    "llm",
+    "claude",
+    "api",
+    "scraping",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "trendspyg>=0.1.0",
     "pytrends>=4.9.0",
@@ -25,6 +49,12 @@ all = [
     "trendkit[selenium,mcp,cli]",
 ]
 
+[project.urls]
+Homepage = "https://github.com/trendkit/trendkit"
+Repository = "https://github.com/trendkit/trendkit"
+Documentation = "https://github.com/trendkit/trendkit#readme"
+Issues = "https://github.com/trendkit/trendkit/issues"
+
 [project.scripts]
 trendkit = "trendkit.cli:main"
 trendkit-mcp = "trendkit.mcp_server:main"
@@ -42,3 +72,7 @@ dev-dependencies = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=7.0.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

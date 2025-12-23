@@ -1,7 +1,7 @@
 """
-MCP Server for Google Trends API.
+MCP Server for trendkit.
 
-Run with: python -m google_trends_api.mcp_server
+Run with: trendkit-mcp
 Or configure in Claude Desktop settings.
 """
 
@@ -13,13 +13,13 @@ try:
     from mcp.server.stdio import stdio_server
     from mcp.types import Tool, TextContent
 except ImportError:
-    raise ImportError("MCP not installed. Run: pip install google-trends-api[mcp]")
+    raise ImportError("MCP not installed. Run: pip install trendkit[mcp]")
 
 from . import trending, trending_bulk, interest, related, compare
 
 
 # Create MCP server
-server = Server("google-trends")
+server = Server("trendkit")
 
 
 @server.list_tools()
