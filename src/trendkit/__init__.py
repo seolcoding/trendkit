@@ -2,9 +2,7 @@
 trendkit - Multi-platform trend aggregator optimized for LLM tool calls.
 
 Supported platforms:
-- Google Trends (v0.1)
-- Naver Trends (planned)
-- YouTube Trends (planned)
+- Google Trends (realtime, analysis)
 
 Quick Start:
     >>> from trendkit import trending, related, compare
@@ -16,6 +14,10 @@ Quick Start:
 
     >>> compare(["삼성", "애플"])
     {"삼성": 45.6, "애플": 14.4}
+
+    # YouTube keyword interest (via Google Trends)
+    >>> interest(["BTS"], platform="youtube")
+    {"dates": [...], "values": {"BTS": [60, 69, ...]}}
 """
 
 from .core import (
@@ -31,17 +33,20 @@ from .core import (
 )
 
 from .types import Format
+from .backends.pytrends_backend import Platform
 
 __version__ = "0.1.0"
 
 __all__ = [
-    # Functions
+    # Google Trends
     "trending",
     "trending_bulk",
     "interest",
     "related",
     "compare",
+    # Utility
     "supported_geos",
     # Types
     "Format",
+    "Platform",
 ]

@@ -2,10 +2,10 @@
 
 ## Overview
 
-Multi-platform trend aggregator optimized for LLM tool calls.
-- Google Trends (v0.1) ✅
-- Naver Trends (planned)
-- YouTube Trends (planned)
+Google Trends aggregator optimized for LLM tool calls.
+- Token-optimized output formats
+- Multiple collection methods (RSS, Selenium, pytrends)
+- Enriched bulk export with metadata
 
 ## Tech Stack
 
@@ -18,14 +18,14 @@ Multi-platform trend aggregator optimized for LLM tool calls.
 
 ```
 src/trendkit/
-├── core.py           # Public API (trending, related, compare, interest)
-├── types.py          # Type definitions (Format, TypedDicts)
+├── core.py           # Public API (trending, trending_bulk, related, compare, interest)
+├── types.py          # Type definitions (Format, Platform)
 ├── cli.py            # CLI entry point (trendkit command)
 ├── mcp_server.py     # MCP server (trendkit-mcp command)
 └── backends/
-    ├── rss.py        # trendspyg RSS backend (fast)
-    ├── pytrends_backend.py  # Analysis features
-    └── selenium_backend.py  # Bulk collection
+    ├── rss.py              # trendspyg RSS backend (fast, ~20 items)
+    ├── pytrends_backend.py # Analysis features (interest, related, compare)
+    └── selenium_backend.py # Bulk collection (~100 items)
 
 tests/
 └── test_api.py       # API tests
@@ -40,29 +40,35 @@ Three output formats to minimize LLM token usage:
 - `standard`: Dict with keyword + traffic (~15 tokens/item)
 - `full`: Complete data with news (~100 tokens/item)
 
-### Backend Strategy (Google)
+### Backend Strategy
 
-| Backend | Library | Purpose |
-|---------|---------|---------|
-| RSS | trendspyg | Realtime trending (fast, 10-20 items) |
-| Selenium | selenium | Bulk collection (100+ items) |
-| pytrends | pytrends | Analysis (interest, related, compare) |
+| Backend | Library | Purpose | Limit |
+|---------|---------|---------|-------|
+| RSS | trendspyg | Realtime trending (fast) | ~20 |
+| Selenium | selenium | Bulk collection | ~100 |
+| pytrends | pytrends | Analysis (interest, related, compare) | - |
+
+### Bulk Export
+
+`trending_bulk()` supports enriched export with:
+- Metadata (geo, hours, limit, collected_at, source)
+- News articles (headline, url, source, image)
+- Related queries (up to 10)
+- Images (url, source)
+- Explore links
 
 ## Commands
 
 ```bash
 # Development
-cd /Users/sdh/Dev/02_production/trendkit
-source .venv/bin/activate
 uv run python -c "from trendkit import trending; print(trending(limit=5))"
 
-# CLI (after pip install)
+# CLI
 trendkit trend --limit 5
+trendkit bulk --limit 100 --output trends.csv
+trendkit bulk --limit 10 --enrich --output trends.json
 trendkit rel 아이폰 --limit 5
 trendkit cmp 삼성 애플
-
-# MCP Server (after pip install)
-trendkit-mcp
 
 # Tests
 uv run pytest tests/ -v
@@ -71,12 +77,21 @@ uv run pytest tests/ -v
 ## API Quick Reference
 
 ```python
-from trendkit import trending, related, compare, interest
+from trendkit import trending, trending_bulk, related, compare, interest
 
+# Realtime trending (RSS, fast)
 trending(geo="KR", limit=10, format="minimal")  # List[str]
+
+# Bulk trending (Selenium, ~100 items)
+trending_bulk(geo="KR", hours=168, limit=100)                    # List[dict]
+trending_bulk(limit=100, output="trends.csv")                     # Save to CSV
+trending_bulk(limit=10, enrich=True, output="trends.json")       # Enriched JSON
+
+# Analysis
 related("keyword", geo="KR", limit=10)          # List[str]
 compare(["kw1", "kw2"], geo="KR", days=90)      # Dict[str, float]
 interest(["kw1"], geo="KR", days=7)             # Dict with dates/values
+interest(["kw1"], platform="youtube")           # YouTube search interest
 ```
 
 ## MCP Tools
@@ -85,9 +100,3 @@ interest(["kw1"], geo="KR", days=7)             # Dict with dates/values
 - `trends_related`: Related search queries
 - `trends_compare`: Compare keyword interest
 - `trends_interest`: Interest over time
-
-## Roadmap
-
-- [x] v0.1 - Google Trends
-- [ ] v0.2 - Naver Trends (DataLab API)
-- [ ] v0.3 - YouTube Trends (Data API v3)

@@ -1,6 +1,10 @@
 """PyTrends backend for analysis features."""
 
+from typing import Literal, Optional
 from pytrends.request import TrendReq
+
+# Platform type for gprop parameter
+Platform = Literal["web", "youtube", "images", "news", "froogle"]
 
 
 class PyTrendsBackend:
@@ -21,6 +25,7 @@ class PyTrendsBackend:
         keywords: list[str],
         geo: str = "KR",
         days: int = 7,
+        platform: Platform = "web",
     ) -> dict:
         """
         Get interest over time for keywords.
@@ -29,6 +34,7 @@ class PyTrendsBackend:
             keywords: List of keywords to analyze (max 5)
             geo: Country code
             days: Number of days (1, 7, 30, 90, 365)
+            platform: Search platform - "web", "youtube", "images", "news", "froogle"
 
         Returns:
             {
@@ -37,7 +43,8 @@ class PyTrendsBackend:
             }
         """
         timeframe = self._days_to_timeframe(days)
-        self._client.build_payload(keywords[:5], timeframe=timeframe, geo=geo)
+        gprop = "" if platform == "web" else platform
+        self._client.build_payload(keywords[:5], timeframe=timeframe, geo=geo, gprop=gprop)
 
         df = self._client.interest_over_time()
 
@@ -91,6 +98,7 @@ class PyTrendsBackend:
         keywords: list[str],
         geo: str = "KR",
         days: int = 90,
+        platform: Platform = "web",
     ) -> dict[str, float]:
         """
         Compare keywords by average interest.
@@ -99,12 +107,14 @@ class PyTrendsBackend:
             keywords: Keywords to compare (max 5)
             geo: Country code
             days: Number of days
+            platform: Search platform - "web", "youtube", "images", "news", "froogle"
 
         Returns:
             {"keyword1": 45.6, "keyword2": 14.4}
         """
         timeframe = self._days_to_timeframe(days)
-        self._client.build_payload(keywords[:5], timeframe=timeframe, geo=geo)
+        gprop = "" if platform == "web" else platform
+        self._client.build_payload(keywords[:5], timeframe=timeframe, geo=geo, gprop=gprop)
 
         df = self._client.interest_over_time()
 
