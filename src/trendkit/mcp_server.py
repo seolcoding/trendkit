@@ -5,176 +5,135 @@ Run with: trendkit-mcp
 Or configure in Claude Desktop settings.
 """
 
-import json
-from typing import Any
+from typing import Literal
 
 try:
-    from mcp.server import Server
-    from mcp.server.stdio import stdio_server
-    from mcp.types import Tool, TextContent
+    from mcp.server.fastmcp import FastMCP
 except ImportError:
     raise ImportError("MCP not installed. Run: pip install trendkit[mcp]")
 
-from . import trending, trending_bulk, interest, related, compare
+from . import trending, related, compare, interest
+from .backends.pytrends_backend import Platform
+
+# Create FastMCP server
+mcp = FastMCP(
+    "trendkit",
+    instructions="Google Trends data aggregator optimized for LLM tool calls. "
+    "Provides realtime trending keywords, related queries, keyword comparison, "
+    "and interest over time data.",
+)
 
 
-# Create MCP server
-server = Server("trendkit")
+@mcp.tool()
+def trends_trending(
+    geo: str = "KR",
+    limit: int = 10,
+    format: Literal["minimal", "standard", "full"] = "minimal",
+) -> list[str] | list[dict]:
+    """
+    Get realtime trending keywords from Google Trends.
+
+    Args:
+        geo: Country code (KR, US, JP, GB, DE, FR, etc.)
+        limit: Number of results to return (max 20)
+        format: Output detail level
+            - minimal: ["keyword1", "keyword2", ...] (~5 tokens/item)
+            - standard: [{"keyword": "...", "traffic": "..."}] (~15 tokens/item)
+            - full: [{"keyword": "...", "traffic": "...", "news": [...]}] (~100 tokens/item)
+
+    Returns:
+        List of trending keywords or detailed dicts based on format.
+
+    Example:
+        trends_trending(geo="KR", limit=5)
+        → ["환율", "날씨", "뉴스", "주식", "로또"]
+    """
+    return trending(geo=geo, limit=limit, format=format)
 
 
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    """List available tools."""
-    return [
-        Tool(
-            name="trends_trending",
-            description="Get realtime trending keywords. Returns list of trending search terms.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "geo": {
-                        "type": "string",
-                        "description": "Country code (KR, US, JP, etc.)",
-                        "default": "KR",
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Number of results (max 20)",
-                        "default": 10,
-                    },
-                    "format": {
-                        "type": "string",
-                        "enum": ["minimal", "standard", "full"],
-                        "description": "Output detail level",
-                        "default": "minimal",
-                    },
-                },
-            },
-        ),
-        Tool(
-            name="trends_related",
-            description="Get related search queries for a keyword.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "keyword": {
-                        "type": "string",
-                        "description": "Target keyword to find related queries",
-                    },
-                    "geo": {
-                        "type": "string",
-                        "description": "Country code",
-                        "default": "KR",
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Number of results",
-                        "default": 10,
-                    },
-                },
-                "required": ["keyword"],
-            },
-        ),
-        Tool(
-            name="trends_compare",
-            description="Compare keywords by average search interest.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "keywords": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Keywords to compare (max 5)",
-                    },
-                    "geo": {
-                        "type": "string",
-                        "description": "Country code",
-                        "default": "KR",
-                    },
-                    "days": {
-                        "type": "integer",
-                        "description": "Time period in days",
-                        "default": 90,
-                    },
-                },
-                "required": ["keywords"],
-            },
-        ),
-        Tool(
-            name="trends_interest",
-            description="Get interest over time for keywords (time series data).",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "keywords": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Keywords to analyze (max 5)",
-                    },
-                    "geo": {
-                        "type": "string",
-                        "description": "Country code",
-                        "default": "KR",
-                    },
-                    "days": {
-                        "type": "integer",
-                        "description": "Time period in days (1, 7, 30, 90, 365)",
-                        "default": 7,
-                    },
-                },
-                "required": ["keywords"],
-            },
-        ),
-    ]
+@mcp.tool()
+def trends_related(
+    keyword: str,
+    geo: str = "KR",
+    limit: int = 10,
+) -> list[str]:
+    """
+    Get related search queries for a keyword.
+
+    Args:
+        keyword: Target keyword to find related queries for
+        geo: Country code (KR, US, JP, etc.)
+        limit: Number of results to return
+
+    Returns:
+        List of related search queries.
+
+    Example:
+        trends_related(keyword="아이폰", limit=5)
+        → ["아이폰 16", "아이폰 17", "아이폰 케이스", ...]
+    """
+    return related(keyword=keyword, geo=geo, limit=limit)
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-    """Handle tool calls."""
-    try:
-        if name == "trends_trending":
-            result = trending(
-                geo=arguments.get("geo", "KR"),
-                limit=arguments.get("limit", 10),
-                format=arguments.get("format", "minimal"),
-            )
-        elif name == "trends_related":
-            result = related(
-                keyword=arguments["keyword"],
-                geo=arguments.get("geo", "KR"),
-                limit=arguments.get("limit", 10),
-            )
-        elif name == "trends_compare":
-            result = compare(
-                keywords=arguments["keywords"],
-                geo=arguments.get("geo", "KR"),
-                days=arguments.get("days", 90),
-            )
-        elif name == "trends_interest":
-            result = interest(
-                keywords=arguments["keywords"],
-                geo=arguments.get("geo", "KR"),
-                days=arguments.get("days", 7),
-            )
-        else:
-            return [TextContent(type="text", text=f"Unknown tool: {name}")]
+@mcp.tool()
+def trends_compare(
+    keywords: list[str],
+    geo: str = "KR",
+    days: int = 90,
+    platform: Platform = "web",
+) -> dict[str, float]:
+    """
+    Compare keywords by average search interest.
 
-        return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+    Args:
+        keywords: Keywords to compare (max 5)
+        geo: Country code (KR, US, JP, etc.)
+        days: Time period in days (7, 30, 90, 365)
+        platform: Search platform - "web", "youtube", "images", "news"
 
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+    Returns:
+        Dictionary mapping keywords to their average interest scores (0-100).
+
+    Example:
+        trends_compare(keywords=["삼성", "애플"], days=90)
+        → {"삼성": 45.6, "애플": 32.1}
+    """
+    return compare(keywords=keywords, geo=geo, days=days, platform=platform)
 
 
-async def _run():
-    """Run MCP server (async)."""
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+@mcp.tool()
+def trends_interest(
+    keywords: list[str],
+    geo: str = "KR",
+    days: int = 7,
+    platform: Platform = "web",
+) -> dict:
+    """
+    Get interest over time for keywords (time series data).
+
+    Args:
+        keywords: Keywords to analyze (max 5)
+        geo: Country code (KR, US, JP, etc.)
+        days: Time period in days (1, 7, 30, 90, 365)
+        platform: Search platform - "web", "youtube", "images", "news"
+
+    Returns:
+        Dictionary with dates and values for each keyword.
+        {
+            "dates": ["2024-12-01", "2024-12-02", ...],
+            "values": {"keyword1": [42, 45, ...], "keyword2": [...]}
+        }
+
+    Example:
+        trends_interest(keywords=["BTS"], days=7)
+        → {"dates": [...], "values": {"BTS": [42, 45, 38, ...]}}
+    """
+    return interest(keywords=keywords, geo=geo, days=days, platform=platform)
 
 
 def main():
     """Entry point for MCP server."""
-    import asyncio
-    asyncio.run(_run())
+    mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":
