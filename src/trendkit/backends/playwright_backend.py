@@ -22,6 +22,7 @@ class PlaywrightBackend:
         self._context = None
         self._page = None
         self._playwright = None
+        self._playwright_cm = None
         self._stealth = None
 
     async def _setup_browser(self):
@@ -35,8 +36,13 @@ class PlaywrightBackend:
                 "Install with: pip install trendkit[playwright]"
             ) from e
 
-        self._stealth = Stealth()
-        self._playwright = await self._stealth.use_async(async_playwright())
+        self._stealth = Stealth(
+            navigator_languages_override=("ko-KR", "ko", "en-US", "en"),
+        )
+
+        # Start playwright using context manager protocol
+        self._playwright_cm = async_playwright()
+        self._playwright = await self._playwright_cm.__aenter__()
 
         self._browser = await self._playwright.chromium.launch(
             headless=self.headless,
@@ -44,6 +50,7 @@ class PlaywrightBackend:
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--disable-gpu",
+                "--disable-blink-features=AutomationControlled",
             ]
         )
 
@@ -52,6 +59,9 @@ class PlaywrightBackend:
             locale="ko-KR",
             timezone_id="Asia/Seoul",
         )
+
+        # Apply stealth to context
+        await self._stealth.apply_stealth_async(self._context)
 
         self._page = await self._context.new_page()
         logger.info("Playwright browser initialized with stealth mode")
@@ -71,7 +81,7 @@ class PlaywrightBackend:
                 await self._setup_browser()
 
             logger.info(f"Navigating to {url}")
-            await self._page.goto(url, wait_until="networkidle", timeout=30000)
+            await self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
             all_data = []
 
@@ -92,18 +102,19 @@ class PlaywrightBackend:
                 # Extract rows using JavaScript for better performance
                 rows_data = await self._page.evaluate("""
                     () => {
-                        const rows = document.querySelectorAll('tr');
+                        const rows = document.querySelectorAll('table tr');
                         const data = [];
                         rows.forEach((row, idx) => {
-                            if (idx === 0) return; // Skip header
+                            if (idx < 2) return; // Skip header rows (first 2)
                             const cells = row.querySelectorAll('td');
-                            if (cells.length >= 2) {
+                            if (cells.length >= 3) {
                                 const keyword = cells[1]?.innerText?.trim();
                                 const traffic = cells[2]?.innerText?.trim() || 'N/A';
                                 if (keyword) {
+                                    const trafficParts = traffic.split(String.fromCharCode(10));
                                     data.push({
                                         keyword: keyword,
-                                        traffic: traffic.split('\\n')[0] || 'N/A'
+                                        traffic: trafficParts[0] || 'N/A'
                                     });
                                 }
                             }
@@ -181,19 +192,13 @@ class PlaywrightBackend:
         Returns:
             [{"keyword": "...", "rank": 1, "traffic": "..."}, ...]
         """
+        # Always use a new event loop to avoid conflicts
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            # Already in async context
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, self._fetch_trending_async(geo, hours, limit))
-                return future.result()
-        else:
-            return asyncio.run(self._fetch_trending_async(geo, hours, limit))
+            return loop.run_until_complete(self._fetch_trending_async(geo, hours, limit))
+        finally:
+            loop.close()
 
     def _close_sync(self):
         """Synchronously clean up resources without async."""
@@ -201,6 +206,7 @@ class PlaywrightBackend:
         self._context = None
         self._browser = None
         self._playwright = None
+        self._playwright_cm = None
 
     async def _close_async(self):
         """Async close browser."""
@@ -226,11 +232,12 @@ class PlaywrightBackend:
         self._browser = None
 
         try:
-            if self._playwright:
-                await self._playwright.stop()
+            if self._playwright_cm:
+                await self._playwright_cm.__aexit__(None, None, None)
         except Exception:
             pass
         self._playwright = None
+        self._playwright_cm = None
 
     def close(self):
         """Close browser."""
@@ -266,6 +273,7 @@ class AsyncPlaywrightBackend:
         self._context = None
         self._page = None
         self._playwright = None
+        self._playwright_cm = None
         self._stealth = None
 
     async def __aenter__(self):
@@ -286,8 +294,13 @@ class AsyncPlaywrightBackend:
                 "Install with: pip install trendkit[playwright]"
             ) from e
 
-        self._stealth = Stealth()
-        self._playwright = await self._stealth.use_async(async_playwright())
+        self._stealth = Stealth(
+            navigator_languages_override=("ko-KR", "ko", "en-US", "en"),
+        )
+
+        # Start playwright using context manager protocol
+        self._playwright_cm = async_playwright()
+        self._playwright = await self._playwright_cm.__aenter__()
 
         self._browser = await self._playwright.chromium.launch(
             headless=self.headless,
@@ -295,6 +308,7 @@ class AsyncPlaywrightBackend:
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--disable-gpu",
+                "--disable-blink-features=AutomationControlled",
             ]
         )
 
@@ -303,6 +317,9 @@ class AsyncPlaywrightBackend:
             locale="ko-KR",
             timezone_id="Asia/Seoul",
         )
+
+        # Apply stealth to context
+        await self._stealth.apply_stealth_async(self._context)
 
         self._page = await self._context.new_page()
         logger.info("Playwright browser initialized with stealth mode")
@@ -332,7 +349,7 @@ class AsyncPlaywrightBackend:
                 await self._setup_browser()
 
             logger.info(f"Navigating to {url}")
-            await self._page.goto(url, wait_until="networkidle", timeout=30000)
+            await self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
             all_data = []
 
@@ -351,18 +368,19 @@ class AsyncPlaywrightBackend:
 
                 rows_data = await self._page.evaluate("""
                     () => {
-                        const rows = document.querySelectorAll('tr');
+                        const rows = document.querySelectorAll('table tr');
                         const data = [];
                         rows.forEach((row, idx) => {
-                            if (idx === 0) return;
+                            if (idx < 2) return; // Skip header rows (first 2)
                             const cells = row.querySelectorAll('td');
-                            if (cells.length >= 2) {
+                            if (cells.length >= 3) {
                                 const keyword = cells[1]?.innerText?.trim();
                                 const traffic = cells[2]?.innerText?.trim() || 'N/A';
                                 if (keyword) {
+                                    const trafficParts = traffic.split(String.fromCharCode(10));
                                     data.push({
                                         keyword: keyword,
-                                        traffic: traffic.split('\\n')[0] || 'N/A'
+                                        traffic: trafficParts[0] || 'N/A'
                                     });
                                 }
                             }
@@ -422,15 +440,31 @@ class AsyncPlaywrightBackend:
 
     async def close(self):
         """Close browser."""
-        if self._page:
-            await self._page.close()
-            self._page = None
-        if self._context:
-            await self._context.close()
-            self._context = None
-        if self._browser:
-            await self._browser.close()
-            self._browser = None
-        if self._playwright:
-            await self._playwright.stop()
-            self._playwright = None
+        try:
+            if self._page:
+                await self._page.close()
+        except Exception:
+            pass
+        self._page = None
+
+        try:
+            if self._context:
+                await self._context.close()
+        except Exception:
+            pass
+        self._context = None
+
+        try:
+            if self._browser:
+                await self._browser.close()
+        except Exception:
+            pass
+        self._browser = None
+
+        try:
+            if self._playwright_cm:
+                await self._playwright_cm.__aexit__(None, None, None)
+        except Exception:
+            pass
+        self._playwright = None
+        self._playwright_cm = None
