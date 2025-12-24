@@ -196,7 +196,10 @@ class PlaywrightBackend:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            return loop.run_until_complete(self._fetch_trending_async(geo, hours, limit))
+            result = loop.run_until_complete(self._fetch_trending_async(geo, hours, limit))
+            # Close browser in the same event loop where it was created
+            loop.run_until_complete(self._close_async())
+            return result
         finally:
             loop.close()
 
