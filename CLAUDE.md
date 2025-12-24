@@ -4,15 +4,16 @@
 
 Google Trends aggregator optimized for LLM tool calls.
 - Token-optimized output formats
-- Multiple collection methods (RSS, Selenium, pytrends)
+- Multiple collection methods (RSS, Playwright, pytrends)
 - Enriched bulk export with metadata
+- Anti-detection with playwright-stealth
 
 ## Tech Stack
 
 - **Runtime**: Python 3.12+
 - **Package Manager**: uv
 - **Dependencies**: trendspyg, pytrends, pandas
-- **Optional**: selenium, mcp, typer, rich
+- **Optional**: playwright, playwright-stealth, mcp, typer, rich
 
 ## Project Structure
 
@@ -23,12 +24,14 @@ src/trendkit/
 ├── cli.py            # CLI entry point (trendkit command)
 ├── mcp_server.py     # MCP server (trendkit-mcp command)
 └── backends/
-    ├── rss.py              # trendspyg RSS backend (fast, ~20 items)
-    ├── pytrends_backend.py # Analysis features (interest, related, compare)
-    └── selenium_backend.py # Bulk collection (~100 items)
+    ├── rss.py               # trendspyg RSS backend (fast, ~20 items)
+    ├── pytrends_backend.py  # Analysis features (interest, related, compare)
+    └── playwright_backend.py # Bulk collection with stealth (~100 items)
 
 tests/
-└── test_api.py       # API tests
+├── test_api.py              # API tests
+├── test_playwright_backend.py # Playwright backend tests
+└── ...                      # 206 tests total
 ```
 
 ## Key Design Decisions
@@ -45,7 +48,7 @@ Three output formats to minimize LLM token usage:
 | Backend | Library | Purpose | Limit |
 |---------|---------|---------|-------|
 | RSS | trendspyg | Realtime trending (fast) | ~20 |
-| Selenium | selenium | Bulk collection | ~100 |
+| Playwright | playwright + playwright-stealth | Bulk collection with anti-detection | ~100 |
 | pytrends | pytrends | Analysis (interest, related, compare) | - |
 
 ### Bulk Export
@@ -82,16 +85,31 @@ from trendkit import trending, trending_bulk, related, compare, interest
 # Realtime trending (RSS, fast)
 trending(geo="KR", limit=10, format="minimal")  # List[str]
 
-# Bulk trending (Selenium, ~100 items)
+# Bulk trending (Playwright with stealth, ~100 items)
 trending_bulk(geo="KR", hours=168, limit=100)                    # List[dict]
 trending_bulk(limit=100, output="trends.csv")                     # Save to CSV
 trending_bulk(limit=10, enrich=True, output="trends.json")       # Enriched JSON
+trending_bulk(limit=10, headless=False)                          # Debug mode (show browser)
 
 # Analysis
 related("keyword", geo="KR", limit=10)          # List[str]
 compare(["kw1", "kw2"], geo="KR", days=90)      # Dict[str, float]
 interest(["kw1"], geo="KR", days=7)             # Dict with dates/values
 interest(["kw1"], platform="youtube")           # YouTube search interest
+```
+
+## Installation
+
+```bash
+# Basic
+pip install trendkit
+
+# With Playwright for bulk collection
+pip install trendkit[playwright]
+playwright install chromium
+
+# Full installation
+pip install trendkit[all]
 ```
 
 ## MCP Tools

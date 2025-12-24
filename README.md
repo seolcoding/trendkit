@@ -37,7 +37,8 @@ Google Trends aggregator designed for LLM tool calls with minimal token usage.
 ## Features
 
 - **Token-optimized**: Minimal output format for LLM function calling (~5 tokens/item)
-- **Multiple backends**: RSS (fast), Selenium (bulk), pytrends (analysis)
+- **Multiple backends**: RSS (fast), Playwright with stealth (bulk), pytrends (analysis)
+- **Anti-detection**: playwright-stealth bypasses bot detection
 - **Enriched export**: News, images, related queries with metadata
 - **Multiple interfaces**: Python API, CLI, MCP server
 
@@ -49,8 +50,9 @@ Google Trends aggregator designed for LLM tool calls with minimal token usage.
 # Basic
 pip install trendkit
 
-# With Selenium (bulk collection)
-pip install trendkit[selenium]
+# With Playwright (bulk collection with anti-detection)
+pip install trendkit[playwright]
+playwright install chromium
 
 # With CLI
 pip install trendkit[cli]
@@ -60,6 +62,7 @@ pip install trendkit[mcp]
 
 # All features
 pip install trendkit[all]
+playwright install chromium
 ```
 
 ---
@@ -271,14 +274,15 @@ Get realtime trending keywords (via RSS, fast).
 - `standard`: `[{"keyword": "...", "traffic": "..."}]`
 - `full`: `[{"keyword": "...", "traffic": "...", "news": [...]}]`
 
-### `trending_bulk(geo="KR", hours=168, limit=100, enrich=False, output=None)`
+### `trending_bulk(geo="KR", hours=168, limit=100, enrich=False, output=None, headless=True)`
 
-Get bulk trending data (via Selenium, ~100 items).
+Get bulk trending data (via Playwright with stealth, ~100 items).
 
 **Parameters:**
 - `hours`: Time period (4, 24, 48, 168)
 - `enrich`: Add news, images, related queries
 - `output`: Save to file (.csv or .json)
+- `headless`: Run browser in headless mode (default: True, set False for debugging)
 
 ### `related(keyword, geo="KR", limit=10)`
 
@@ -306,10 +310,10 @@ trendkit/
 │   ├── cli.py               # CLI (trendkit command)
 │   ├── mcp_server.py        # MCP server
 │   └── backends/
-│       ├── rss.py           # RSS backend (fast, ~20 items)
+│       ├── rss.py               # RSS backend (fast, ~20 items)
 │       ├── pytrends_backend.py  # Analysis features
-│       └── selenium_backend.py  # Bulk collection (~100 items)
-└── tests/
+│       └── playwright_backend.py # Bulk collection with stealth (~100 items)
+└── tests/                   # 206 tests (86% coverage)
 ```
 
 ---
@@ -333,8 +337,12 @@ uv run pytest
 
 See [ROADMAP.md](docs/ROADMAP.md) for planned features.
 
+**Implemented:**
+- ✅ Cache layer for reduced API calls
+- ✅ Playwright with stealth mode for anti-detection
+- ✅ Comprehensive error handling with helpful suggestions
+
 **Coming Soon:**
-- Cache layer for reduced API calls
 - LangChain Tool integration
 - Multi-geo support expansion
 
