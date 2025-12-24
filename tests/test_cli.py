@@ -232,17 +232,19 @@ class TestCLIHelpMessages:
         """trend --help should show options."""
         result = runner.invoke(app, ["trend", "--help"])
         assert result.exit_code == 0
-        assert "--geo" in result.stdout
-        assert "--limit" in result.stdout
-        assert "--format" in result.stdout
+        # Check for option names (ANSI codes may split strings like --geo)
+        assert "geo" in result.stdout
+        assert "limit" in result.stdout
+        assert "format" in result.stdout
 
     def test_bulk_help(self):
         """bulk --help should show options."""
         result = runner.invoke(app, ["bulk", "--help"])
         assert result.exit_code == 0
-        assert "--hours" in result.stdout
-        assert "--enrich" in result.stdout
-        assert "--output" in result.stdout
+        # Check for option names (ANSI codes may split strings like --hours)
+        assert "hours" in result.stdout
+        assert "enrich" in result.stdout
+        assert "output" in result.stdout
 
 
 class TestCLIMain:
