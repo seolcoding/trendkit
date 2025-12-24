@@ -306,8 +306,10 @@ class TestCacheWorkflowScenario:
 class TestSupportedGeosScenario:
     """Scenario: Working with different geographic regions."""
 
-    def test_all_geos_are_valid(self):
+    @patch("trendkit.backends.rss.download_google_trends_rss")
+    def test_all_geos_are_valid(self, mock_rss):
         """All returned geos should work with trending."""
+        mock_rss.return_value = [{"trend": "test", "traffic": "1000+"}]
         geos = supported_geos()
 
         # Test a few geos

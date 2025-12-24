@@ -36,11 +36,14 @@ class TestTrendingValidation:
         error_msg = str(exc_info.value).lower()
         assert "invalid" in error_msg or "geo" in error_msg or "available" in error_msg
 
-    def test_lowercase_geo_works(self):
+    @patch("trendkit.backends.rss.download_google_trends_rss")
+    def test_lowercase_geo_works(self, mock_rss):
         """trending() should accept lowercase geo codes."""
-        # Should not raise - lowercase should be normalized
+        mock_rss.return_value = [{"trend": "test", "traffic": "1000+"}]
+        # Should not raise - lowercase should work (normalized internally)
         result = trending(geo="kr", limit=3)
         assert isinstance(result, list)
+        mock_rss.assert_called_once()
 
 
 class TestCompareValidation:
