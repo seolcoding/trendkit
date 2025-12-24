@@ -1,6 +1,6 @@
 [project]
 name = "trendkit"
-version = "0.2.0"
+version = "0.2.1"
 description = "Google Trends aggregator optimized for LLM tool calls"
 readme = "README.md"
 license = "MIT"
